@@ -45,11 +45,11 @@ def get_cms_info(target, apikey):
 
 
 def check_wordpress(target, version, messages):
-    print("Проверка безопасности для WordPress...")
+    print("Starting WordPress security checks...")
     try:
         r = requests.get(f"{target}/readme.html", timeout=5)
         if r.status_code == 200:
-            msg = "readme.html доступен — раскрытие версии"
+            msg = "readme.html is accessible – version disclosure risk"
             print(msg)
             messages.append(msg)
     except requests.RequestException:
@@ -57,7 +57,7 @@ def check_wordpress(target, version, messages):
     try:
         r = requests.get(f"{target}/wp-config.php", timeout=5)
         if r.status_code == 200:
-            msg = "wp-config.php доступен — критический риск"
+            msg = "wp-config.php is accessible – critical security risk"
             print(msg)
             messages.append(msg)
     except requests.RequestException:
@@ -67,7 +67,7 @@ def check_wordpress(target, version, messages):
             wp_api = requests.get("https://api.wordpress.org/core/version-check/1.7/", timeout=5).json()
             latest = wp_api.get("offers", [{}])[0].get("current")
             if latest and version != latest:
-                msg = f"Версия WordPress ({version}) устарела. Последняя: {latest}"
+                msg = f"WordPress version ({version}) is outdated. Latest: {latest}"
                 print(msg)
                 messages.append(msg)
         except requests.RequestException:
@@ -75,11 +75,11 @@ def check_wordpress(target, version, messages):
 
 
 def check_joomla(target, messages):
-    print("Проверка безопасности для Joomla...")
+    print("Starting Joomla security checks...")
     try:
         r = requests.get(f"{target}/configuration.php", timeout=5)
         if r.status_code == 200:
-            msg = "configuration.php доступен — раскрытие конфиденциальных данных"
+            msg = "configuration.php is accessible – sensitive data exposure risk"
             print(msg)
             messages.append(msg)
     except requests.RequestException:
@@ -87,7 +87,7 @@ def check_joomla(target, messages):
     try:
         r = requests.get(f"{target}/administrator/", timeout=5)
         if r.status_code == 200:
-            msg = "/administrator/ доступна — проверьте ограничения доступа"
+            msg = "/administrator/ directory is accessible – check access restrictions"
             print(msg)
             messages.append(msg)
     except requests.RequestException:
@@ -95,11 +95,11 @@ def check_joomla(target, messages):
 
 
 def check_drupal(target, messages):
-    print("Проверка безопасности для Drupal...")
+    print("Starting Drupal security checks...")
     try:
         r = requests.get(f"{target}/CHANGELOG.txt", timeout=5)
         if r.status_code == 200:
-            msg = "CHANGELOG.txt доступен — раскрытие версии Drupal"
+            msg = "CHANGELOG.txt is accessible – version disclosure risk"
             print(msg)
             messages.append(msg)
     except requests.RequestException:
@@ -107,16 +107,16 @@ def check_drupal(target, messages):
 
 
 def check_security_headers(target, messages):
-    print("Проверка общих заголовков безопасности...")
+    print("Checking common security headers...")
     try:
         r = requests.get(target, timeout=5)
         headers = r.headers
         if "Content-Security-Policy" not in headers:
-            msg = "Заголовок Content-Security-Policy отсутствует"
+            msg = "Missing Content-Security-Policy header"
             print(msg)
             messages.append(msg)
         if "X-Frame-Options" not in headers:
-            msg = "Заголовок X-Frame-Options отсутствует"
+            msg = "Missing X-Frame-Options header"
             print(msg)
             messages.append(msg)
     except requests.RequestException:
