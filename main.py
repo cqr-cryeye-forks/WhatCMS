@@ -1,20 +1,22 @@
+#!/usr/bin/env python3
 import argparse
+import json
+import pathlib
+import sys
+from typing import Final
 
 import requests
-import sys
-import json
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Security scan tool using WhatCMS API")
     parser.add_argument('--target', required=True, help='Target domain or URL')
     parser.add_argument('--apikey', required=True, help='WhatCMS API key')
-    parser.add_argument('--output', required=True, help='Output file for JSON results')
+    parser.add_argument('--output', required=True, help='Output file name for JSON results')
     return parser.parse_args()
 
 
 def normalize_target(target):
-    # Добавляем протокол, если не указан; пробуем http и https
     if target.startswith(('http://', 'https://')):
         return target
     for scheme in ('http://', 'https://'):
@@ -36,13 +38,10 @@ def get_cms_info(target, apikey):
     if "msg" in data and "Invalid API key" in data["msg"]:
         sys.exit("Invalid API key")
     return {
-        "name":       data.get("name", None),
-        "version":    data.get("version", None),
-        "confidence": data.get("confidence", None)
+        "name": data.get("name"),
+        "version": data.get("version"),
+        "confidence": data.get("confidence")
     }
-
-
-
 
 
 def check_wordpress(target, version, messages):
@@ -63,7 +62,6 @@ def check_wordpress(target, version, messages):
             messages.append(msg)
     except requests.RequestException:
         pass
-    # Проверка актуальности версии
     if version:
         try:
             wp_api = requests.get("https://api.wordpress.org/core/version-check/1.7/", timeout=5).json()
@@ -74,7 +72,6 @@ def check_wordpress(target, version, messages):
                 messages.append(msg)
         except requests.RequestException:
             pass
-
 
 
 def check_joomla(target, messages):
@@ -95,7 +92,6 @@ def check_joomla(target, messages):
             messages.append(msg)
     except requests.RequestException:
         pass
-
 
 
 def check_drupal(target, messages):
@@ -136,7 +132,7 @@ def main():
         "cms": cms,
         "messages": []
     }
-    # Пункт 6: security checks
+
     name = cms.get("name")
     version = cms.get("version")
     if name == "WordPress":
@@ -145,12 +141,17 @@ def main():
         check_joomla(target, result["messages"])
     elif name == "Drupal":
         check_drupal(target, result["messages"])
-    # Общие заголовки
+
     check_security_headers(target, result["messages"])
 
-    # TODO: пункты 7-9: запись в файл и консоль
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    MAIN_DIR: Final[pathlib.Path] = pathlib.Path(__file__).resolve().parents[0]
+    output_path = MAIN_DIR / args.output
 
+    with output_path.open('w', encoding='utf-8') as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+    print(f"RESULTS:\n{json.dumps(result, indent=4)}")
+    print(f"Results saved to {output_path}")
 
 
 if __name__ == "__main__":
