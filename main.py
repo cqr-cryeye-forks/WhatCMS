@@ -36,7 +36,7 @@ def get_cms_info(target, apikey):
         sys.exit("API request failed")
     data = r.json()
     if "msg" in data and "Invalid API key" in data["msg"]:
-        sys.exit("Invalid API key")
+        return "Invalid API key"
     return {
         "name": data.get("name"),
         "version": data.get("version"),
@@ -123,18 +123,32 @@ def check_security_headers(target, messages):
         pass
 
 
-def main():
-    args = parse_args()
-    target = normalize_target(args.target)
-    cms = get_cms_info(target, args.apikey)
+def run(target, apikey):
+    target = normalize_target(target)
+
     result = {
         "target": target,
-        "cms": cms,
         "messages": []
     }
 
+    cms = get_cms_info(target, apikey)
+
+    if cms == "Invalid API key":
+        result=  {
+            "target": target,
+            "messages": [cms]
+        }
+        return result
+
     name = cms.get("name")
     version = cms.get("version")
+    confidence = cms.get("confidence", 0)
+
+    if name and confidence >= 80:
+        combined_cms = f"Detected CMS: {name} {version}" if version else f"Detected CMS: {name}"
+        print(combined_cms)
+        result["messages"].append(combined_cms)
+
     if name == "WordPress":
         check_wordpress(target, version, result["messages"])
     elif name == "Joomla":
@@ -143,9 +157,23 @@ def main():
         check_drupal(target, result["messages"])
 
     check_security_headers(target, result["messages"])
+    return result
+
+
+def main():
+    args = parse_args()
+
+    target: str = args.target
+    apikey: str = args.apikey
+    output: str = args.output
+
+    result = run(
+        target=target,
+        apikey=apikey,
+    )
 
     MAIN_DIR: Final[pathlib.Path] = pathlib.Path(__file__).resolve().parents[0]
-    output_path = MAIN_DIR / args.output
+    output_path = MAIN_DIR / output
 
     with output_path.open('w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
